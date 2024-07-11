@@ -4,18 +4,20 @@ Created on Tue Sep  5 17:17:40 2017
 
 @author: Mohit
 """
-
+import tensorflow as tf
 #Part 1 : Building a CNN
 
 #import Keras packages
-from keras.models import Sequential
-from keras.layers import Convolution2D
-from keras.layers import MaxPooling2D
-from keras.layers import Flatten
-from keras.layers import Dense
-from keras.layers import Dropout
+from tensorflow.python.keras.models import Sequential
+from tensorflow.python.keras.layers import Convolution2D
+from tensorflow.python.keras.layers import MaxPooling2D
+from tensorflow.python.keras.layers import Flatten
+from tensorflow.python.keras.layers import Dense
+from tensorflow.python.keras.layers import Dropout
 import numpy as np
-from keras.utils.vis_utils import plot_model
+import pandas as pd
+from tensorflow.python.keras.utils.vis_utils import plot_model
+from keras._tf_keras.keras.preprocessing.image import ImageDataGenerator
 
 
 # Initializing the CNN
@@ -46,8 +48,6 @@ print(classifier.summary())
 #plot_model(classifier, show_shapes=True, to_file='PlantVillage_CNN.png')
 
 #Part 2 - fitting the data set
-
-from keras.preprocessing.image import ImageDataGenerator
 
 train_datagen = ImageDataGenerator(
         rescale=1./255,
