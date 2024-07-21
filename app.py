@@ -6,77 +6,73 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 from PIL import Image
-from flask import Flask,app,request,render_template
+from flask import Flask, request, render_template, url_for, send_from_directory
+import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.applications import ResNet152V2
-from tensorflow.keras.layers import GlobalAveragePooling2D,Dense
-from tensorflow.keras.models import Model
+from keras.applications import ResNet152V2
+from keras.layers import GlobalAveragePooling2D, Dense, BatchNormalization
+from keras.models import Model
 
-
-Model = keras.models.load_model('C:\\GIT\\Tomato-Plant-Disease-Recognition\\Training\\tmt.keras')
-app=Flask(__name__)
+model = keras.models.load_model('Training/my_model.h5', custom_objects={'BatchNormalization': BatchNormalization})
+app = Flask(__name__)
 
 @app.route('/')
 def home():
     return render_template('index.html')
+
 @app.route('/about')
 def about():
     return render_template('about.html')
+
 @app.route('/contact')
 def contact():
     return render_template('contact.html')
-@app.route('/details')
-def pred():
+
+@app.route('/predict')
+def predict():
     return render_template('predict.html')
 
-@app.route('/result',method=['GET','POST'])
-def predict():
-    if request.method =='POST':
-        f=request.files['image']
-        basepath=os.path.dirname(__file__)
-        filepath=os.path.join(basepath,'Data','val','Tomato__healthy',f.filename)
+@app.route('/results', methods=['GET', 'POST'])
+def results():
+    if request.method == 'POST':
+        if 'image' not in request.files:
+            return render_template('results.html', prediction_text="No file part")
+
+        f = request.files['image']
+        if f.filename == '':
+            return render_template('results.html', prediction_text="No selected file")
+
+        basepath = os.path.dirname(__file__)
+        filepath = os.path.join(basepath, 'uploads', f.filename)
         f.save(filepath)
-        image= Image.open(filepath)
-        image= np.asarray(image)
-        pred = np.argmax(model.predict(image.reshape(-1,256,256,3)/255))
-       
 
-        classes = [ ' Tomato___Bacterial_spot ', 'Tomato___Early_blight ',
-                    ' Tomato___healthy ' , 'Tomato___Late_blight ' ,
-                    ' Tomato___Leaf_Mold' , 'Tomato___Septoria_leaf_spot ' ,
-                    ' Tomato___Spider_mites Two-spotted_spider_mite ' ,
-                    ' Tomato___Target_Spot ' , 'Tomato___Tomato_mosaic_virus ' ,
-                    ' Tomato___Tomato_Yellow_Leaf_Curl_Virus ' ]
-        keys = [ 'Tomato___Bacterial_spot ' , 'Tomato___Early_blight ' ,
-                 ' Tomato___Late_blight ' , ' Tomato___Leaf_Mold' ,
-                 ' Tomato___Septoria_leaf_spot ' , 'Tomato___Spider_mites Two-spotted_spider_mite ' ,
-                 ' Tomato___Target_Spot ', 'Tomato___Tomato_Yellow_Leaf_Curl_Virus ',
-                 ' Tomato___Tomato_mosaic_virus ' , 'Tomato___healthy ']
-        for j in list ( enumerate(keys) ) :
-                if pred == j [0] :
-                    prediction = j [1 ]
+        # Load and preprocess the image
+        try:
+            image = Image.open(filepath)
+            image = image.resize((256, 256))
+            image = np.asarray(image)
+            image = image.reshape(-1, 256, 256, 3) / 255.0
 
+            # Predict the class of the image
+            pred = np.argmax(model.predict(image))
+            print(model.predict(image))
 
-        if prediction == ' Tomato _Bacterial_spot' :
-            return render_template( 'results.html ' , prediction_text = "to have Bacterial spots. ")
-        elif prediction == 'Tomato _Early_blight ' :
-            return render_template( 'results.html ' , prediction_text= "to have Early Blights . ")
-        elif prediction == 'Tomato _healthy ' :
-            return render_template( 'results.html ' , prediction_text = "to be healthy . ")
-        elif prediction == 'Tomato _Late_blight ' :
-            return render_template( 'results.html', prediction_text = "to have Late Blights . ")
-        elif prediction == 'Tomato _Septoria_leaf_spot ' :
-            return render_template( ' results.html ' , prediction_text = "to have Septoria_Leaf_Spot . ")
-        elif prediction == 'Tomato Spider_mites Two- spotted spider_mite ' :
-            return render_template( 'results.html ' , prediction_text = "to have Spider Mites. ")
-        elif prediction == 'Tomato Target_Spot ' :
-            return render_template( 'results.html ' , prediction_text = "to have Target spots . ")
-        elif prediction == 'Tomato _Tomato_mosaic_virus ' :
-            return render_template( 'results.html ' , prediction_text = "to have Tomato Mosaic Virus. ")
-        elif prediction == 'Tomato _Leaf_Mold ' :
-            return render_template( 'results.html ' , prediction_text = "to have Leaf Molds. ")
-        elif prediction == 'Tomato _Tomato_Yellow_Leaf_Curl_Virus ' :
-            return render_template( 'results.html ' , prediction_text = "to have Tomato Yellow Leaf Curl Virus. ")
+            classes = [
+                'Tomato_Bacterial_spot', 'Tomato_Early_blight',
+                'Tomato_Late_blight', 'Tomato_Leaf_Mold', 'Tomato_Septoria_leaf_spot',
+                'Tomato_Spider_mites_Two_spotted_spider_mite', 'Tomato_Target_Spot',
+                'Tomato_Tomato_Yellow_Leaf_Curl_Virus',  'Tomato_Tomato_mosaic_virus', 'Tomato_healthy'
+            ]
 
-        if __name__=="__main__":
-            app.run(debug=True)    
+            prediction = classes[(pred) % 10]
+            prediction_text = f"The tomato is predicted to have {prediction.replace('_', ' ').lower()}."
+            return render_template('results.html', prediction_text=prediction_text)
+        
+        except Exception as e:
+            return render_template('results.html', prediction_text=f"Error processing image: {str(e)}")
+    
+    return render_template('results.html', prediction_text="Invalid request method")
+
+    
+if __name__ == "__main__":
+    app.run(debug=True)
